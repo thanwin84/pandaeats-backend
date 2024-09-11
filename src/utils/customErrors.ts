@@ -36,3 +36,12 @@ export class ForbiddenError extends Error{
         this.statusCode = statusCodes.FORBIDDEN
     }
 }
+export class ConflictError extends Error{
+    name: string
+    statusCode: number
+    constructor(message:string){
+        super(message)
+        this.name = "conflictError"
+        this.statusCode = statusCodes.CONFLICT
+    }
+}
