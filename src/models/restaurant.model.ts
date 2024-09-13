@@ -40,7 +40,17 @@ const restaurantSchema = new mongoose.Schema({
     },
     cuisines: [{type:String, required: true}],
     menuItem: [menuItemSchema],
-    imageUrl: {type: String, required: true}
+    imageUrl: {
+        url: {
+            type: String,
+            requried: true
+        },
+        // we need public id to delete resource from cloudinary
+        publicId: {
+            type: String,
+            required: true
+        }
+    }
 }, 
 {
     timestamps: true
