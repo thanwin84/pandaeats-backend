@@ -1,14 +1,16 @@
 import mongoose from "mongoose";
-import User from "./user.model";
+import { cuisineList } from "../constants/cuisineList";
 
 const menuItemSchema = new mongoose.Schema({
     name: {
         type: String,
-        required: true
+        required: true,
+        lowercase: true
     },
     price: {
         type: Number,
-        required: true
+        required: true,
+        min: 0
     }
 })
 
@@ -20,30 +22,35 @@ const restaurantSchema = new mongoose.Schema({
     },
     restaurantName: {
         type: String,
-        required: true
+        required: true,
+        lowercase: true
     },
     city: {
         type: String,
-        required: true
+        required: true,
+        lowercase:true
     },
     country: {
         type: String,
-        required: true
+        required: true,
+        lowercase: true
     },
     deliveryPrice: {
         type: Number,
-        required: true
+        required: true,
+        min: 0
     },
     estimatedDeliveryTime: {
         type: Number,
-        required: true
+        required: true,
+        min: 0
     },
-    cuisines: [{type:String, required: true}],
+    cuisines: [{type:String, required: true, lowercase: true, enum: cuisineList}],
     menuItem: [menuItemSchema],
     imageUrl: {
         url: {
             type: String,
-            requried: true
+            required: true
         },
         // we need public id to delete resource from cloudinary
         publicId: {

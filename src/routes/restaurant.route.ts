@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { createRestaurant, getMyRestaurant, updateRestaurant } from "../controllers/restaurant.controller";
+import { createRestaurant, getMyRestaurant, updateRestaurant, searchRestaurant } from "../controllers/restaurant.controller";
 import { upload } from "../middleware/multer.middleware";
 import { validateRestaurantCreate } from "../middleware/validation.middleware";
 import { jwtCheck, jwtParse } from "../middleware/jwtCheck.middleware";
@@ -28,4 +28,5 @@ router.get('/',
     getMyRestaurant
 )
 
+router.route("/search/:city").get(searchRestaurant)
 export default router  

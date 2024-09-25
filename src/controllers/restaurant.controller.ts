@@ -3,7 +3,7 @@ import asynHandler from "../utils/asynHandler";
 import { Restaurant } from "../models/restaurant.model";
 import { BadRequestError, ConflictError, NotFoundError } from "../utils/customErrors";
 import { deleteAsset, uploadOnCloudinary } from "../utils/clounidary";
-import { statusCodes } from "../utils/constants";
+import { restaurant, statusCodes } from "../utils/constants";
 import { ApiResponse } from "../utils/ApiResponse";
 
 const getMyRestaurant = asynHandler(async (req, res)=>{
@@ -56,13 +56,13 @@ const updateRestaurant = asynHandler(async (req:Request, res:Response)=>{
         throw new NotFoundError("Restaurant does not exists")
     }
     const publicId = restaurant.imageUrl?.publicId as string
-    if (publicId){
-        await deleteAsset(publicId)
-        
-    }
-    const localFilePath = req?.file?.path
     
-    const uploadResponse = localFilePath ? await uploadOnCloudinary(localFilePath): null
+    const localFilePath = req?.file?.path
+    if (localFilePath){
+        await deleteAsset(publicId)
+    }
+    
+    const uploadResponse = localFilePath ? await uploadOnCloudinary(localFilePath):null
     const imageUrl = {
        url: "",
        publicId: ""
@@ -86,9 +86,81 @@ const updateRestaurant = asynHandler(async (req:Request, res:Response)=>{
 
 })
 
+const searchRestaurant = asynHandler(async (req: Request, res:Response)=>{
+    const city = req.params.city
+    const cuisines = req.query.selectedCuisines
+    const searchQuery = req.query.searchQuery as string || ""
+    const selectedCuisines = Array.isArray(cuisines) ? cuisines: cuisines ? [cuisines as string]: []
+    const limit = Number(req.query.limit) || 10
+    const page = Number(req.query.page) || 1
+    const sortOption = req.query.sortOption as string || "updatedAt"
+    const sortKey = {[sortOption]: 1} as const
 
+    const skips = (Number(page) - 1) * Number(limit)
+    const queryObject:any = {}
+    queryObject['city'] = {$regex: city, $options: "i"}
+    
+
+    const cityExists = await Restaurant.countDocuments(queryObject)
+    if (cityExists === 0){
+        res.status(statusCodes.OK)
+        .json(new ApiResponse(
+            statusCodes.OK,
+            {
+                data: [],
+                pagination: {
+                    total: 0,
+                    page: 0,
+                    pages: 0
+                }
+            }
+        ))
+        return
+    }
+    if (selectedCuisines.length !== 0){
+        queryObject.cuisines = {$all: selectedCuisines}
+    }
+    if (searchQuery){
+        queryObject.$or = [
+            {restaurantName: {$regex: searchQuery, $options: 'i'}},
+            {cuisines: {$in: [searchQuery]}}
+        ]
+    }
+    const aggregationPipeline = [
+        {
+            $match: queryObject
+        },
+        {
+            $sort: sortKey
+        },
+        {
+            $skip: skips
+        },
+        {
+            $limit: limit
+        }
+    ]
+    
+    const matchedRestaurants = await Restaurant.aggregate(aggregationPipeline)
+    const totalMatchedRestaurantsCount = await Restaurant.countDocuments(queryObject)
+    const pages = Math.ceil(totalMatchedRestaurantsCount / limit)
+    res.status(statusCodes.OK)
+        .json(new ApiResponse(
+            statusCodes.OK,
+            {
+                data: matchedRestaurants,
+                pagination: {
+                    total: totalMatchedRestaurantsCount,
+                    page,
+                    pages
+                }
+            }
+        ))
+
+})
 export {
     createRestaurant,
     getMyRestaurant,
-    updateRestaurant
+    updateRestaurant,
+    searchRestaurant
 }
