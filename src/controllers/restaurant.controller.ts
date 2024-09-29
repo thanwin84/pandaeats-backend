@@ -158,9 +158,24 @@ const searchRestaurant = asynHandler(async (req: Request, res:Response)=>{
         ))
 
 })
+
+const getRestaurantById = asynHandler(async (req: Request, res: Response)=>{
+    const {restaurantId} = req.params
+    const  restaurant = await Restaurant.findById(restaurantId)
+    if (!restaurant){
+        throw new NotFoundError(`Restaurant is not found with id ${restaurantId}`)
+    }
+    res.status(statusCodes.OK)
+    .json(new ApiResponse(
+        statusCodes.OK,
+        restaurant,
+        "Restaurant data is fetched successfully"
+    ))
+})
 export {
     createRestaurant,
     getMyRestaurant,
     updateRestaurant,
-    searchRestaurant
+    searchRestaurant,
+    getRestaurantById
 }

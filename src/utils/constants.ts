@@ -27,9 +27,11 @@ const restaurant = {
     IMAGE_URL: 'imageURL'
 }
 
+const orderStatus = ['placed', "paid", "inProgress", "delivered"]
 
 export {
     dbName,
     statusCodes,
-    restaurant
+    restaurant,
+    orderStatus
 }
