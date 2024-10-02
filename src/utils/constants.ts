@@ -27,7 +27,7 @@ const restaurant = {
     IMAGE_URL: 'imageURL'
 }
 
-const orderStatus = ['placed', "paid", "inProgress", "delivered"]
+const orderStatus = ['placed', "paid", "inProgress", "delivered", "outForDelivery"]
 
 export {
     dbName,

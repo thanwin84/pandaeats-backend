@@ -1,11 +1,12 @@
 import { Request, Response } from "express";
 import asynHandler from "../utils/asynHandler";
 import { MenuItemType, Restaurant, RestaurantType } from "../models/restaurant.model";
-import { NotFoundError } from "../utils/customErrors";
+import { ForbiddenError, NotFoundError } from "../utils/customErrors";
 import Stripe from "stripe";
 import { statusCodes } from "../utils/constants";
 import { ApiResponse } from "../utils/ApiResponse";
 import { Order } from "../models/order.model";
+import mongoose from "mongoose";
 
 const STRIPE=process.env.STRIPE_API_KEY as string
 const FRONTEND_URL = process.env.FRONTEND_URL as string
@@ -135,7 +136,103 @@ const stripeEventHandler = asynHandler(async(req: Request, res:Response)=>{
     ))
 })
 
+type MatchObject = {
+    user: mongoose.Types.ObjectId,
+    status?: string
+    createdAt?: {$gte?: Date, $lte?: Date}
+}
+const getTodayRange = ()=>{
+    const startDay = new Date()
+    startDay.setHours(0, 0, 0, 0)
+    const endDay = new Date()
+    endDay.setHours(23, 59, 59,999)
+    return {startDay, endDay}
+}
+const getMyOrders = asynHandler(async(req, res)=>{
+    const {category} = req.query
+    const {startDay, endDay} = getTodayRange()
+    const matchObject:MatchObject = {
+        user: new mongoose.Types.ObjectId(req.userId)
+    }
+    if (category === 'present'){
+        
+        matchObject.createdAt = {$gte: startDay, $lte: endDay}
+    }
+    if (category === 'past'){
+        
+        matchObject.createdAt = {$lte: startDay}
+    }
+    
+    const orders = await Order.aggregate(
+        [
+            {
+              $match: matchObject
+            },
+            {
+              $lookup: {
+                from: "users",
+                localField: "user",
+                foreignField: "_id",
+                as: "userInfo"
+              }
+            },
+            {
+              $lookup: {
+                from: "restaurants",
+                localField: "restaurant",
+                foreignField: '_id',
+                as: "restaurantDetails"
+              }
+            },
+            {
+              $unwind: {
+                path: "$userInfo"
+              }
+            },
+            {
+              $unwind: {
+                path: "$restaurantDetails"
+              }
+            },
+            {$sort: {createdAt: 1}}
+          ]
+    )
+    
+    res.status(statusCodes.OK)
+    .json(new ApiResponse(
+        statusCodes.OK,
+        orders,
+        "Orders are fetched successfully"
+    ))
+})
+
+const updateOrderStatus = asynHandler(async(req:Request, res:Response)=>{
+    const {orderId} = req.params
+    const {status} = req.body
+    
+    const restaurant = await Restaurant.findOne({user: req.userId})
+    if (!restaurant){
+        throw new ForbiddenError("User is not allowed to change order status")
+    }
+    const order = await Order.findByIdAndUpdate(
+        orderId,
+        {$set:{status: status}}
+    )
+    if (!order){
+        throw new NotFoundError(`Order with id ${orderId} is not found`)
+    }
+    res.status(statusCodes.OK)
+    .json(new ApiResponse(
+        statusCodes.OK,  
+        order,
+        "order status is cha nged successfully"
+    ))
+
+})
+ 
 export {
     createCheckoutSession,
-    stripeEventHandler
+    stripeEventHandler,
+    getMyOrders,
+    updateOrderStatus
 }

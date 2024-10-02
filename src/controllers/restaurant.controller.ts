@@ -5,11 +5,19 @@ import { BadRequestError, ConflictError, NotFoundError } from "../utils/customEr
 import { deleteAsset, uploadOnCloudinary } from "../utils/clounidary";
 import { restaurant, statusCodes } from "../utils/constants";
 import { ApiResponse } from "../utils/ApiResponse";
+import { Order } from "../models/order.model";
+import mongoose from "mongoose";
 
 const getMyRestaurant = asynHandler(async (req, res)=>{
     const restaurant = await Restaurant.findOne({user: req.userId})
     if (!restaurant){
-        throw new NotFoundError("Restaurant does not exists")
+        res.status(200)
+        .json(new ApiResponse(
+            statusCodes.OK,
+            {},
+            "restaurant does not exist"
+        ))
+        return
     }
     res.status(statusCodes.OK)
     .json(new ApiResponse(
@@ -172,10 +180,57 @@ const getRestaurantById = asynHandler(async (req: Request, res: Response)=>{
         "Restaurant data is fetched successfully"
     ))
 })
+
+const getMyRestaurantOrders = asynHandler(async (req:Request, res:Response)=>{
+    const restaurant = await Restaurant.findOne({user: req.userId})
+    if (!restaurant){
+        res.status(statusCodes.OK)
+        .json(new ApiResponse(
+            statusCodes.OK,
+            [],
+            "You have not registered any restaurant yet"
+        ))
+        return
+    }
+    const orders = await Order.aggregate(
+        [
+            {
+              $match: {
+                restaurant: new mongoose.Types.ObjectId(restaurant._id)
+              }
+            },
+            {
+              $lookup: {
+                from: "users",
+                localField: "user",
+                foreignField: "_id",
+                as: "user"
+              }
+            },
+            {
+              $addFields: {
+                "user": {$first: "$user"}
+              }
+            },
+            {$sort: {createdAt: 1}}
+          ]
+    )
+    
+    res.status(statusCodes.OK)
+    .json(
+        new ApiResponse(
+            statusCodes.OK,
+            orders,
+            "Restaurant's orders are fetched succesfully"
+        )
+    )
+
+})
 export {
     createRestaurant,
     getMyRestaurant,
     updateRestaurant,
     searchRestaurant,
-    getRestaurantById
+    getRestaurantById,
+    getMyRestaurantOrders
 }
